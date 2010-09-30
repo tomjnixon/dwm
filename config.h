@@ -1,4 +1,5 @@
 /* See LICENSE file for copyright and license details. */
+#include <stdio.h>
 
 /* appearance */
 static const char font[]            = "-*-*-medium-*-*-*-14-*-*-*-*-*-*-*";
@@ -20,6 +21,8 @@ static const Rule rules[] = {
 	/* class      instance    title       tags mask     isfloating   monitor */
 	{ "Gimp",     NULL,       NULL,       0,            True,        -1 },
 	{ "Firefox",  NULL,       NULL,       1 << 8,       False,       -1 },
+	{ "Firefox",  NULL,       NULL,       1 << 8,       False,       -1 },
+	{ "Chrome",   NULL,       NULL,       1 << 8,       False,       -1 },
 };
 
 /* layout(s) */
@@ -27,6 +30,7 @@ static const float mfact      = 0.55; /* factor of master area size [0.05..0.95]
 static const Bool resizehints = True; /* True means respect size hints in tiled resizals */
 
 #include "fibonacci.c"
+#include "gaplessgrid.c"
 static const Layout layouts[] = {
 	/* symbol     arrange function */
 	{ "[]=",      tile },    /* first entry is default */
@@ -34,6 +38,8 @@ static const Layout layouts[] = {
 	{ "[M]",      monocle },
 	{ "[@]",      spiral },
 	{ "[\\]",     dwindle },
+	{ "###",      gaplessgrid },
+
 };
 
 /* key definitions */
@@ -52,24 +58,97 @@ static const char *dmenucmd[] = { "dmenu_run", "-fn", font, "-nb", normbgcolor, 
 static const char *termcmd[]  = { "uxterm", "-bg", "black", "-fg", "white", NULL };
 static const char *lockcmd[]  = { "xlock", "-timeelapsed", NULL };
 
+void
+my_spawn(const char *cmd_str) {
+  char *cmd[]  = { "sh", "-c", NULL, NULL };
+
+  char buffer [100];
+  sprintf(buffer, "export tag=%u; %s", selmon->tagset[selmon->seltags], cmd_str);
+  cmd[2] = buffer;
+  Arg arg = {.v = cmd};
+  spawn(&arg);
+}
+
+
+char *get_contents(char *name)
+{
+	FILE *f = fopen(name, "r");
+	char *line = malloc(1000 * sizeof(char));
+	
+	fgets(line, 1000, f);
+	printf("%s\n", line);
+	fclose(f);
+	return line;
+}
+
+
+int lowest_power_of_2(int x)
+{
+	int y;
+	for (y = 0; x & (1 << y); y++);
+	return y;
+}
+
+
+void
+my_spawn2(const Arg *arg)
+{
+	int desk_no = lowest_power_of_2(selmon->tagset[selmon->seltags]);
+	char file_name[1000];
+	sprintf(file_name, "/home/S09/nixont9/.desks/%d", desk_no);
+	char *dir = get_contents(file_name);
+	printf("%s/n", dir);
+	if (! dir[0])
+		chdir("/home/S09/nixont9/");
+	else
+		chdir(dir);
+	spawn(arg);
+}
+
+
+void
+spawn_term(const Arg *arg)
+{
+  my_spawn("xterm -bg black -fg white");
+}
+
+void
+focusmaster(const Arg *arg)
+{
+	Client *c = NULL;
+	
+	if(!selmon->sel)
+		return;
+	
+	for(c = selmon->clients; !ISVISIBLE(c); c = c->next);
+	
+	if (c) {
+		focus(c);
+		restack(selmon);
+	}
+}
+
 static Key keys[] = {
 	/* modifier                     key        function        argument */
-	{ MODKEY,                       XK_p,      spawn,          {.v = dmenucmd } },
-	{ MODKEY,                       XK_Return, spawn,          {.v = termcmd } },
+	{ MODKEY,                       XK_p,      my_spawn2,          {.v = dmenucmd } },
+	{ MODKEY,                       XK_Return, my_spawn2,          {.v = termcmd } },
+	{ MODKEY|ShiftMask,             XK_Return, spawn_term,     {0} },
 	{ MODKEY|ShiftMask,             XK_l,      spawn,          {.v = lockcmd } },
 	{ MODKEY,                       XK_b,      togglebar,      {0} },
 	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
 	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
+	{ MODKEY,                       XK_m,      focusmaster,    {0} },
 	{ MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
 	{ MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
 	{ MODKEY,                       XK_z,      zoom,           {0} },
 	{ MODKEY,                       XK_Tab,    view,           {0} },
 	{ MODKEY,                       XK_c,      killclient,     {0} },
 	{ MODKEY,                       XK_t,      setlayout,      {.v = &layouts[0]} },
-	{ MODKEY,                       XK_f,      setlayout,      {.v = &layouts[1]} },
-	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
+	{ MODKEY|ShiftMask,             XK_f,      setlayout,      {.v = &layouts[1]} },
+	{ MODKEY,                       XK_f,      setlayout,      {.v = &layouts[2]} },
 	{ MODKEY,                       XK_i,      setlayout,      {.v = &layouts[3]} },
 	{ MODKEY,                       XK_d,      setlayout,      {.v = &layouts[4]} },
+	{ MODKEY,                       XK_g,      setlayout,      {.v = &layouts[5]} },
 	{ MODKEY,                       XK_space,  setlayout,      {0} },
 	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
 	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
