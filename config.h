@@ -74,18 +74,20 @@ char *get_contents(char *name)
 {
 	FILE *f = fopen(name, "r");
 	char *line = malloc(1000 * sizeof(char));
-	
-	fgets(line, 1000, f);
-	printf("%s\n", line);
-	fclose(f);
+	line[0] = 0;
+	if (f)
+	{
+		fgets(line, 1000, f);
+		fclose(f);
+	}
 	return line;
 }
 
 
-int lowest_power_of_2(int x)
+int lowest_power_of_2(unsigned int x)
 {
 	int y;
-	for (y = 0; x & (1 << y); y++);
+	for (y = 0; (x & (1 << y)) == 0; y++);
 	return y;
 }
 
@@ -93,13 +95,14 @@ int lowest_power_of_2(int x)
 void
 my_spawn2(const Arg *arg)
 {
-	int desk_no = lowest_power_of_2(selmon->tagset[selmon->seltags]);
+	unsigned int desk_no = lowest_power_of_2(selmon->tagset[selmon->seltags]) + 1;
+	printf("tag: %u\n", selmon->tagset[selmon->seltags]);
 	char file_name[1000];
-	sprintf(file_name, "/home/S09/nixont9/.desks/%d", desk_no);
+	sprintf(file_name, "%s/.desks/%u", getenv("HOME"), desk_no);
 	char *dir = get_contents(file_name);
-	printf("%s/n", dir);
-	if (! dir[0])
-		chdir("/home/S09/nixont9/");
+	printf("%s\n", file_name);
+	if (dir[0] == 0)
+		chdir(getenv("HOME"));
 	else
 		chdir(dir);
 	spawn(arg);
